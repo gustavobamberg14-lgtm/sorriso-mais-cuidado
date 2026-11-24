@@ -8,7 +8,16 @@ const dateBr=x=>new Date(x+'T12:00:00').toLocaleDateString('pt-BR');
 const clinicEmail='gustavobamberg14@gmail.com';
 let user,patient,entries=[],patients=[],current='inicio';
 const notice=t=>{let x=document.querySelector('#toast');x.textContent=t;setTimeout(()=>x.textContent='',5000)};
-const fail=e=>notice(e?.message||'Não foi possível concluir. Tente novamente.');
+const fail=e=>{
+ const messages={
+  invalid_credentials:'E-mail ou senha incorretos. Se não lembrar a senha, use Recuperar senha.',
+  user_already_exists:'Este e-mail já possui uma conta. Entre ou use Recuperar senha.',
+  email_not_confirmed:'Confirme seu e-mail antes de entrar.'
+ };
+ const output=document.querySelector('#auth-error');
+ const text=messages[e?.code]||'Não foi possível concluir. Verifique a conexão e tente novamente.';
+ if(output)output.textContent=text;else notice(text);
+};
 const title=(a,b)=>'<div class="title"><h1>'+a+'</h1><p>'+b+'</p></div>';
 const safe=fn=>async event=>{try{await fn(event)}catch(error){fail(error)}};
 const result=async promise=>{const {data,error}=await promise;if(error)throw error;return data};
@@ -17,7 +26,7 @@ function history(rows){return rows.length?'<ul class="list">'+rows.map(e=>'<li><
 function setNav(){nav.innerHTML=user?'<button data-page="inicio">Visão geral</button><button data-page="historico">Histórico</button>'+(isClinic()?'<button data-page="clinica">Pacientes</button>':'<button data-page="diario">Meu diário</button>')+'<button data-page="orientacoes">Orientações</button><button id="logout">Sair</button>':'';nav.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>render(b.dataset.page));let logout=document.querySelector('#logout');if(logout)logout.onclick=safe(async()=>{await result(db.auth.signOut());location.reload()})}
 function login(){
  document.querySelector('.demo').textContent='Entre com sua conta para acessar seu acompanhamento.';
- page.innerHTML=title('Bem-vindo ao Sorriso+','Seu cuidado continua entre as consultas.')+'<div class="grid"><section class="card"><h2>Acesse sua conta</h2><p class="sub">Pacientes devem usar o mesmo e-mail cadastrado pela clínica.</p><form id="auth" class="stack" style="margin-top:18px"><label class="field">E-mail<input name="email" type="email" required autocomplete="email"></label><label class="field">Senha<input name="password" type="password" minlength="6" required autocomplete="current-password"></label><div class="actions"><button class="btn" value="login">Entrar</button><button class="btn alt" value="signup">Criar conta</button><button class="btn outline" type="button" id="reset">Recuperar senha</button></div></form></section><aside class="card"><h2>Seu acompanhamento em um só lugar</h2><p class="sub">Registre a higiene, reveja seu histórico e acompanhe sua próxima consulta.</p></aside></div>';
+ page.innerHTML=title('Bem-vindo ao Sorriso+','Seu cuidado continua entre as consultas.')+'<div class="grid"><section class="card"><h2>Acesse sua conta</h2><p class="sub">Pacientes devem usar o mesmo e-mail cadastrado pela clínica.</p><form id="auth" class="stack" style="margin-top:18px"><label class="field">E-mail<input name="email" type="email" required autocomplete="email"></label><label class="field">Senha<input name="password" type="password" minlength="6" required autocomplete="current-password"></label><p id="auth-error" role="alert" style="color:#a12e29;font-weight:600"></p><div class="actions"><button class="btn" value="login">Entrar</button><button class="btn alt" value="signup">Criar conta</button><button class="btn outline" type="button" id="reset">Recuperar senha</button></div></form></section><aside class="card"><h2>Seu acompanhamento em um só lugar</h2><p class="sub">Registre a higiene, reveja seu histórico e acompanhe sua próxima consulta.</p></aside></div>';
  document.querySelector('#auth').onsubmit=safe(async ev=>{ev.preventDefault();let f=new FormData(ev.target),email=f.get('email').trim().toLowerCase(),password=f.get('password');let action=ev.submitter.value;if(action==='signup'){let {error}=await db.auth.signUp({email,password});if(error)throw error;notice('Confira seu e-mail para confirmar a conta.');}else{await result(db.auth.signInWithPassword({email,password}));await start()}});
  document.querySelector('#reset').onclick=safe(async()=>{let email=document.querySelector('[name=email]').value.trim();if(!email){notice('Informe seu e-mail primeiro.');return}await result(db.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}));notice('Se a conta existir, enviaremos instruções por e-mail.')});
 }
